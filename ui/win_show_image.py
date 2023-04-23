@@ -28,17 +28,22 @@ class ShowImage:
         if not self.img:  # 从位图数据创建PIL Image对象
             self.img = Image.open(BytesIO(imgData))
         self.photo = ImageTk.PhotoImage(self.img)  # 保存图片对象
+        self.img_width = self.img.width
+        self.img_height = self.img.height
         # 创建Tkinter窗口
         self.win = tk.Toplevel()
-        self.win.iconphoto(False, Asset.getImgTK('umiocr24'))  # 设置窗口图标
+        # self.win.iconphoto(False, Asset.getImgTK('umiocr24'))  # 设置窗口图标
         self.win.overrideredirect(True)
         self.win.config(borderwidth=0)  # 隐藏边缘
+
         # 创建Canvas对象并将其填充为整个窗口
         self.canvas = tk.Canvas(self.win, width=self.img.width, height=self.img.height)
         self.canvas.pack(fill='both', expand=True)
         self.canvas.config(borderwidth=0, highlightthickness=0)
         # 在Canvas上创建图像
         self.canvas_image = self.canvas.create_image(0, 0, anchor='nw', image=self.photo)
+        # 创建隐藏的缓冲区图像
+        self.buffer = self.canvas.create_image(0, 0, anchor='nw', image=None, state='hidden')
         # canvas坐标系canvas_cs左上(0,0),右下尺寸
         self.c_new_x, self.c_new_y = 0, 0
         # 设置窗口大小
@@ -76,7 +81,7 @@ class ShowImage:
         self.menubar.add_cascade(label='更多', menu=submenu)
         # 事件绑定
         self.canvas.bind("<Enter>", self._on_enter)  # 鼠标进入画布
-        self.canvas.bind("<Leave>", self._on_leave) # 鼠标离开画布
+        self.canvas.bind("<Leave>", self._on_leave)  # 鼠标离开画布
         self.canvas.bind('<Motion>', self._on_mouse_motion)  # 绑定鼠标划过事件
         self.canvas.bind("<ButtonPress-1>", self._on_mouse_press)  # 绑定鼠标左键点击事件
         self.canvas.bind("<B1-Motion>", self._on_mouse_drag)  # 绑定鼠标左键拖拽事件
@@ -170,12 +175,25 @@ class ShowImage:
         self.win.after(0, self._update_windows, self.new_width, self.new_height, self.w_new_x, self.w_new_y)
 
     def _update_windows(self, new_width, new_height, w_new_x, w_new_y):
-        resized_img = self.img.resize(
-            (self.new_width, self.new_height), Image.BICUBIC)
-        # 将PIL Image对象转换为Tkinter PhotoImage对象，并更新Canvas上的图像
-        self.photo = ImageTk.PhotoImage(resized_img)
-        self.canvas.itemconfigure(self.canvas_image, image=self.photo)
+        # resized_img = self.img.resize((new_width, new_height), Image.BICUBIC)
+        # # 将PIL Image对象转换为Tkinter PhotoImage对象，并更新Canvas上的图像
+        # self.photo = ImageTk.PhotoImage(resized_img)
+        # self.canvas.itemconfigure(self.canvas_image, image=self.photo)
         self.win.geometry(f"{new_width}x{new_height}+{w_new_x}+{w_new_y}")
+        if self.draggable:
+            return
+        self._update_canvas(new_width, new_height)
+
+    def _update_canvas(self, new_width, new_height):
+        # 缩放图像
+        resized_img = self.img.resize((new_width, new_height), Image.BICUBIC)
+        # 将PIL Image对象转换为Tkinter PhotoImage对象，并更新缓冲区图像
+        self.photo = ImageTk.PhotoImage(resized_img)
+        self.canvas.itemconfigure(self.buffer, image=self.photo)
+        # 一次性地显示缓冲区图像
+        self.canvas.update_idletasks()
+        self.canvas.itemconfigure(self.buffer, state='normal')
+        self.canvas.lower(self.buffer)
 
     def _on_mouse_motion(self, event):
         x = event.x
