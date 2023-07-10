@@ -60,7 +60,7 @@ def build():
 
 
 def create_portable():
-    file_list = glob.glob(f'{OUTPUT_DIR / APP_NAME}.dist/**', recursive=True)
+    file_list = glob.glob(f'{OUTPUT_DIR / EXEC_NAME }.dist/**', recursive=True)
     file_list.sort()
     portable_file = RELEASE_DIR / f'{APP_NAME}-{APP_VERSION}-Portable-{SYSTEM}-{ARCH}.zip'
 
